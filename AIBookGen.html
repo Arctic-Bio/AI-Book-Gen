@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>AI Book Generator</title>
+    <!-- Tailwind CSS CDN for modern styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Font "Inter" for a clean, modern look -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Custom styles to enhance Tailwind defaults and ensure responsiveness */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1a202c; /* Deep dark background */
+            color: #e2e8f0; /* Soft light text for contrast */
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh; /* Full viewport height */
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+        }
+        #app-header {
+            background-color: #2d3748; /* Slightly lighter dark for header */
+            padding: 1rem;
+            text-align: center;
+            font-size: 1.8rem;
+            font-weight: bold;
+            border-bottom: 1px solid #4a5568; /* Subtle separator */
+            color: #ffffff; /* Pure white for header text */
+            border-radius: 0 0 0.75rem 0.75rem; /* Rounded bottom corners */
+        }
+        #main-content {
+            flex: 1; /* Allows content to grow and fill space */
+            display: flex;
+            flex-direction: column; /* Stacks vertically on small screens */
+            padding: 1rem;
+            gap: 1rem; /* Space between sections */
+            max-width: 1200px; /* Max width for larger screens */
+            margin: 1rem auto; /* Center content horizontally */
+            width: 100%; /* Full width within max-width */
+        }
+        .section-card {
+            background-color: #2d3748; /* Card background */
+            border-radius: 0.75rem; /* Rounded corners for cards */
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow */
+            transition: transform 0.2s ease-in-out; /* Smooth hover effect */
+        }
+        .section-card:hover {
+            transform: translateY(-2px); /* Slight lift on hover */
+        }
+        textarea, input[type="text"], input[type="number"] {
+            background-color: #4a5568; /* Darker input fields */
+            border: 1px solid #6b7280; /* Subtle border */
+            color: #e2e8f0; /* Light text in inputs */
+            padding: 0.75rem;
+            border-radius: 0.5rem; /* Rounded inputs */
+            width: 100%; /* Full width within parent */
+            transition: all 0.2s ease-in-out; /* Smooth focus transition */
+        }
+        textarea:focus, input[type="text"]:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #63b3ed; /* Blue border on focus */
+            box-shadow: 0 0 0 3px rgba(99, 179, 237, 0.5); /* Blue glow on focus */
+        }
+        button {
+            background-color: #4299e1; /* Vibrant blue for buttons */
+            color: white;
+            padding: 0.75rem 1.5rem;
+            border-radius: 0.5rem; /* Rounded buttons */
+            font-weight: 600; /* Semi-bold text */
+            cursor: pointer;
+            transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out; /* Smooth transitions */
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1); /* Button shadow */
+        }
+        button:hover:not(:disabled) {
+            background-color: #3182ce; /* Darker blue on hover */
+            transform: translateY(-1px); /* Slight lift on hover */
+        }
+        button:disabled {
+            background-color: #6b7280; /* Grey for disabled state */
+            cursor: not-allowed;
+            opacity: 0.7; /* Slightly faded */
+            box-shadow: none;
+        }
+        .status-message {
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            font-size: 0.9rem;
+            text-align: center;
+            font-weight: 500;
+        }
+        /* Specific status message colors */
+        .status-message.bg-red-700 { background-color: #c53030; color: #fff; }
+        .status-message.bg-green-700 { background-color: #38a169; color: #fff; }
+        .status-message.bg-blue-700 { background-color: #3182ce; color: #fff; }
+
+        #book-output, #storyboard-output {
+            min-height: 250px; /* Minimum height for scrollable areas */
+            max-height: 60vh; /* Max height to prevent overflowing screen */
+            white-space: pre-wrap; /* Preserves line breaks and spacing */
+            overflow-y: auto; /* Enables vertical scrolling */
+            line-height: 1.6; /* Improved readability */
+            font-size: 0.95rem;
+            padding-right: 1rem; /* Space for scrollbar */
+        }
+        #book-output {
+            padding: 1.5rem; /* Adjust padding for better content display */
+        }
+        /* Scrollbar styling for a consistent look */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #4a5568; /* Darker track */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #63b3ed; /* Blue thumb */
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4299e1; /* Darker blue on hover */
+        }
+
+        .storyboard-item {
+            margin-bottom: 0.75rem;
+            padding-left: 1rem;
+            border-left: 4px solid #63b3ed; /* Accent border */
+            background-color: #4a5568; /* Slightly different background for items */
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            transition: background-color 0.2s;
+        }
+        .storyboard-item.current-chapter {
+            background-color: #3a5068; /* Highlight for current chapter */
+            border-color: #90cdf4; /* Brighter accent for current */
+            font-weight: bold;
+        }
+        .storyboard-item span {
+            font-weight: bold;
+            color: #90cdf4; /* Lighter blue for chapter numbers */
+        }
+
+        .book-page-section {
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid #4a5568; /* Separator between pages */
+            transition: background-color 0.3s ease-in-out;
+        }
+        .book-page-section:last-child {
+            border-bottom: none; /* No border after the last page */
+        }
+        .book-page-title {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #90cdf4; /* Light blue for page titles */
+            margin-bottom: 0.5rem;
+        }
+
+        /* Media queries for responsiveness */
+        @media (min-width: 768px) {
+            #main-content {
+                flex-direction: row; /* Side-by-side on larger screens */
+                justify-content: space-between;
+                align-items: flex-start; /* Align content to the top */
+            }
+            #input-controls {
+                flex: 1; /* Takes one part of available space */
+                max-width: 350px; /* Fixed max width for controls */
+            }
+            .right-panel {
+                flex: 2; /* Takes two parts of available space */
+                display: flex;
+                flex-direction: column;
+                gap: 1rem;
+            }
+            #storyboard-display {
+                flex: 1; /* Storyboard and book output share vertical space */
+            }
+            #book-display {
+                flex: 2; /* Book display gets more vertical space */
+            }
+        }
+    </style>
+</head>
+<body>
+    <header id="app-header">AI Book Generator</header>
+    <div id="main-content">
+        <!-- Input Controls Section -->
+        <div id="input-controls" class="section-card flex flex-col gap-4">
+            <h2 class="text-xl font-semibold text-white mb-2">Book Details</h2>
+            <div>
+                <label for="storyIdea" class="block text-sm font-medium mb-1">Story Idea (e.g., A detective solving a mystery in a futuristic city):</label>
+                <textarea id="storyIdea" rows="3" placeholder="A brave knight embarks on a quest to defeat a dragon." class="focus:ring-blue-500 focus:border-blue-500"></textarea>
+            </div>
+            <div>
+                <label for="genre" class="block text-sm font-medium mb-1">Genre (e.g., Sci-Fi Noir, Fantasy Adventure):</label>
+                <input type="text" id="genre" placeholder="Fantasy Adventure" class="focus:ring-blue-500 focus:border-500"/>
+            </div>
+            <div>
+                <label for="styleTips" class="block text-sm font-medium mb-1">Style Tips (e.g., Gritty, Humorous, Poetic):</label>
+                <input type="text" id="styleTips" placeholder="Epic, descriptive, with a touch of humor" class="focus:ring-blue-500 focus:border-blue-500"/>
+            </div>
+            <div>
+                <label for="pageCount" class="block text-sm font-medium mb-1">Desired Total Pages (e.g., 50-200):</label>
+                <input type="number" id="pageCount" min="10" max="500" value="50" class="focus:ring-blue-500 focus:border-blue-500"/>
+            </div>
+            <button id="generateStoryboardBtn" class="mt-4" disabled>Generate Storyboard</button>
+            <button id="generateNextPageBtn" class="mt-2" disabled>Generate Next Page</button>
+            <button id="nextChapterBtn" class="mt-2" disabled>Next Chapter</button>
+            <button id="autoGenerateBtn" class="mt-2" disabled>Auto Generate Book</button>
+            <button id="stopAutoGenerateBtn" class="mt-2" disabled>Stop Auto Generate</button>
+            <button id="resetBtn" class="mt-2" disabled>Reset</button>
+            <div id="status" class="status-message mt-4 hidden"></div>
+        </div>
+
+        <!-- Storyboard and Book Display Section -->
+        <div class="right-panel">
+            <div id="storyboard-display" class="section-card">
+                <h2 class="text-xl font-semibold text-white mb-2">Storyboard (<span id="currentChapterInfo">Chapter 0</span> / <span id="totalChapterInfo">0</span>)</h2>
+                <div id="storyboard-output" class="text-sm">
+                    Initializing AI model... Please wait.
+                </div>
+            </div>
+            <div id="book-display" class="section-card flex-1">
+                <h2 class="text-xl font-semibold text-white mb-2">Book Content (<span id="currentPageInfo">Page 0</span>)</h2>
+                <div id="book-output">
+                    Start by entering your book details and generating a storyboard!
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import * as webllm from "https://esm.run/@mlc-ai/web-llm@0.2.46";
+
+        // WebLLM engine instance
+        let engine;
+
+        // State variables to manage the book generation process
+        let currentStoryboard = [];     // Stores the array of chapter summaries
+        let currentChapterIndex = 0;    // Tracks the current chapter being generated (0-indexed)
+        let currentPage = 0;            // Tracks the overall current page number (1-indexed)
+        let lastPageContent = "";       // Stores the content of the previously generated page for context
+        let totalPagesGoal = 0;         // The overall total page goal for the book
+        let isAutoGenerating = false;   // Flag to control automatic generation loop
+
+        // Get references to DOM elements
+        const storyIdeaInput = document.getElementById("storyIdea");
+        const genreInput = document.getElementById("genre");
+        const styleTipsInput = document.getElementById("styleTips");
+        const pageCountInput = document.getElementById("pageCount");
+        const generateStoryboardBtn = document.getElementById("generateStoryboardBtn");
+        const generateNextPageBtn = document.getElementById("generateNextPageBtn");
+        const nextChapterBtn = document.getElementById("nextChapterBtn");
+        const autoGenerateBtn = document.getElementById("autoGenerateBtn"); // New button
+        const stopAutoGenerateBtn = document.getElementById("stopAutoGenerateBtn"); // New button
+        const resetBtn = document.getElementById("resetBtn");
+        const statusDiv = document.getElementById("status");
+        const storyboardOutputDiv = document.getElementById("storyboard-output");
+        const bookOutputDiv = document.getElementById("book-output");
+        const currentPageInfoSpan = document.getElementById("currentPageInfo");
+        const currentChapterInfoSpan = document.getElementById("currentChapterInfo");
+        const totalChapterInfoSpan = document.getElementById("totalChapterInfo");
+
+        /**
+         * Updates the status message displayed to the user.
+         * @param {string} message - The message to display.
+         * @param {'info' | 'success' | 'error'} type - The type of message (determines color).
+         */
+        function updateStatus(message, type = "info") {
+            statusDiv.textContent = message;
+            // Apply appropriate Tailwind classes based on message type
+            statusDiv.className = `status-message mt-4 ${
+                type === "error" ? "bg-red-700" : type === "success" ? "bg-green-700" : "bg-blue-700"
+            } text-white`;
+            statusDiv.classList.remove('hidden'); // Ensure status message is visible
+        }
+
+        /**
+         * Updates the display of the current chapter in the storyboard.
+         */
+        function updateStoryboardHighlight() {
+            // Remove highlight from all storyboard items
+            document.querySelectorAll('.storyboard-item').forEach((el, index) => {
+                el.classList.remove('current-chapter');
+            });
+            // Add highlight to the current chapter
+            if (currentChapterIndex < currentStoryboard.length) {
+                const currentChapterElement = document.getElementById(`chapter-${currentChapterIndex}`);
+                if (currentChapterElement) {
+                    currentChapterElement.classList.add('current-chapter');
+                    currentChapterElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+            }
+        }
+
+        /**
+         * Toggles the disabled state of generation buttons based on current process.
+         * @param {boolean} isLoadingModel - True if the WebLLM model is loading.
+         * @param {boolean} isGeneratingStoryboard - True if storyboard is currently being generated.
+         * @param {boolean} isGeneratingPage - True if a page is currently being generated.
+         * @param {boolean} isAutoGeneratingFlag - True if auto-generation is active.
+         */
+        function toggleButtons(isLoadingModel = false, isGeneratingStoryboard = false, isGeneratingPage = false, isAutoGeneratingFlag = false) {
+            // Disable all buttons if model is loading
+            if (isLoadingModel) {
+                generateStoryboardBtn.disabled = true;
+                generateNextPageBtn.disabled = true;
+                nextChapterBtn.disabled = true;
+                autoGenerateBtn.disabled = true;
+                stopAutoGenerateBtn.disabled = true;
+                resetBtn.disabled = true;
+                return;
+            }
+
+            // If auto-generating, most buttons are disabled except stop and reset
+            if (isAutoGeneratingFlag) {
+                generateStoryboardBtn.disabled = true;
+                generateNextPageBtn.disabled = true;
+                nextChapterBtn.disabled = true;
+                autoGenerateBtn.disabled = true; // Auto generate itself is disabled while active
+                stopAutoGenerateBtn.disabled = false;
+                resetBtn.disabled = false; // Always allow reset
+                return;
+            }
+
+            // Normal state (not loading model, not auto-generating)
+            generateStoryboardBtn.disabled = isGeneratingStoryboard || isGeneratingPage;
+            generateNextPageBtn.disabled = isGeneratingPage || currentStoryboard.length === 0 || currentChapterIndex >= currentStoryboard.length;
+            nextChapterBtn.disabled = isGeneratingStoryboard || isGeneratingPage || currentChapterIndex >= currentStoryboard.length - 1;
+            autoGenerateBtn.disabled = isGeneratingStoryboard || isGeneratingPage || currentStoryboard.length === 0 || currentChapterIndex >= currentStoryboard.length;
+            stopAutoGenerateBtn.disabled = true; // Stop button is only active during auto-generate
+            resetBtn.disabled = isGeneratingStoryboard || isGeneratingPage;
+        }
+
+        /**
+         * Resets the application to its initial state, clearing all generated content.
+         */
+        function resetBookGenerator() {
+            isAutoGenerating = false; // Stop any ongoing auto-generation
+            currentStoryboard = [];
+            currentChapterIndex = 0;
+            currentPage = 0;
+            lastPageContent = "";
+            totalPagesGoal = 0;
+            storyboardOutputDiv.innerHTML = "Your book's chapter-by-chapter plan will appear here after generation.";
+            bookOutputDiv.innerHTML = "Start by entering your book details and generating a storyboard!";
+            currentPageInfoSpan.textContent = "Page 0";
+            currentChapterInfoSpan.textContent = "Chapter 0";
+            totalChapterInfoSpan.textContent = "0";
+            statusDiv.classList.add('hidden'); // Hide status message
+            toggleButtons(false, false, false, false); // Re-enable all relevant buttons
+            storyIdeaInput.value = "";
+            genreInput.value = "";
+            styleTipsInput.value = "";
+            pageCountInput.value = "50"; // Reset to default page count
+        }
+
+        // Add event listeners to buttons
+        generateStoryboardBtn.addEventListener("click", generateStoryboard);
+        generateNextPageBtn.addEventListener("click", generateNextPage);
+        nextChapterBtn.addEventListener("click", advanceChapter);
+        autoGenerateBtn.addEventListener("click", autoGenerateBook); // New event listener
+        stopAutoGenerateBtn.addEventListener("click", stopAutoGenerate); // New event listener
+        resetBtn.addEventListener("click", resetBookGenerator);
+
+        /**
+         * Initializes the WebLLM engine.
+         */
+        async function initWebLLM() {
+            updateStatus("Initializing AI model... This may take a while.", "info");
+            toggleButtons(true, false, false, false); // Disable buttons while model loads
+
+            try {
+                // Initialize the WebLLM engine with a specified model
+                engine = await webllm.CreateMLCEngine("Phi-3-mini-4k-instruct-q4f16_1-MLC", {
+                    initProgressCallback: (report) => {
+                        updateStatus(`Loading model: ${report.text} (${(report.progress * 100).toFixed(0)}%)`, "info");
+                    }
+                });
+                updateStatus("AI model loaded successfully! Ready to generate books.", "success");
+                toggleButtons(false, false, false, false); // Enable buttons once model is ready
+                storyboardOutputDiv.innerHTML = "Your book's chapter-by-chapter plan will appear here after generation.";
+            } catch (error) {
+                console.error("Error initializing WebLLM engine:", error);
+                updateStatus(`Failed to load AI model: ${error.message}. Please refresh and try again.`, "error");
+                // Keep buttons disabled on error as the engine is not ready
+                generateStoryboardBtn.disabled = true;
+                generateNextPageBtn.disabled = true;
+                nextChapterBtn.disabled = true;
+                autoGenerateBtn.disabled = true;
+                stopAutoGenerateBtn.disabled = true;
+                resetBtn.disabled = false; // Allow reset on error
+            }
+        }
+
+        /**
+         * Calls the WebLLM engine to generate content.
+         * @param {string} prompt - The text prompt for the AI.
+         * @param {function(string): void} [streamCallback] - Optional callback for streaming updates.
+         * @returns {Promise<string>} - The full generated text.
+         */
+        async function callWebLLM(prompt, streamCallback = () => {}) {
+            let fullContent = "";
+            try {
+                const reply = await engine.chat.completions.create({
+                    messages: [{ role: "user", content: prompt }],
+                    stream: true
+                });
+
+                for await (const chunk of reply) {
+                    const delta = chunk.choices?.[0]?.delta?.content || "";
+                    fullContent += delta;
+                    streamCallback(fullContent); // Provide current full content to callback
+                }
+                return fullContent;
+            } catch (error) {
+                console.error("Error calling WebLLM:", error);
+                throw new Error(`Error communicating with AI: ${error.message}.`);
+            }
+        }
+
+        /**
+         * Generates the storyboard based on user input using the WebLLM engine.
+         * The storyboard will now be chapter-by-chapter.
+         */
+        async function generateStoryboard() {
+            const storyIdea = storyIdeaInput.value.trim();
+            const genre = genreInput.value.trim();
+            const styleTips = styleTipsInput.value.trim();
+            totalPagesGoal = parseInt(pageCountInput.value, 10); // Use totalPagesGoal for overall book length goal
+
+            // Validate user input
+            if (!storyIdea || !genre || !styleTips || isNaN(totalPagesGoal) || totalPagesGoal <= 0) {
+                updateStatus("Please fill in all book details and provide a valid total page count (minimum 10).", "error");
+                return;
+            }
+
+            toggleButtons(false, true, false, false); // Disable buttons while generating storyboard
+            updateStatus("Generating chapter storyboard... This may take a moment. Please wait for the full response.", "info");
+            storyboardOutputDiv.innerHTML = "Generating...";
+
+            // Construct the prompt for generating the storyboard, asking for JSON chapters
+            const prompt = `Generate a detailed JSON storyboard for a book with the following details:
+            - **Story Idea:** ${storyIdea}
+            - **Genre:** ${genre}
+            - **Style Tips:** ${styleTips}
+            - **Desired Total Page Count for the whole book:** ${totalPagesGoal}
+
+            The output MUST be a JSON object with the following structure:
+            {
+                "book_title": "string",
+                "total_chapters": number,
+                "storyboard": [
+                    {
+                        "chapter_number": number,
+                        "chapter_title": "string",
+                        "summary_of_content": "string" // A brief summary of the entire chapter's plot
+                    }
+                ]
+            }
+            Ensure 'chapter_number' starts from 1. 'chapter_title' should be a concise title for the chapter. 'summary_of_content' should be a brief description (2-4 sentences) of the major plot points and progression within that entire chapter. The story should flow logically from beginning to end, covering the entire plot (introduction, rising action, climax, falling action, resolution) across the chapters. The 'total_chapters' field should indicate the final chapter count. The last chapter's summary should provide a satisfying conclusion. DO NOT include any text outside of the JSON.`;
+
+            let rawResponse = "";
+            try {
+                // Call WebLLM with a stream callback to update UI (though for JSON, we show partial message)
+                rawResponse = await callWebLLM(prompt, (currentStream) => {
+                    storyboardOutputDiv.textContent = `Generating chapter storyboard... (partial content received)\n${currentStream.substring(0, 500)}...`;
+                });
+
+                const response = JSON.parse(rawResponse);
+                console.log("Storyboard AI Response:", response);
+
+                if (response && response.storyboard && response.storyboard.length > 0) {
+                    currentStoryboard = response.storyboard;
+                    currentChapterIndex = 0; // Start at the first chapter
+                    currentPage = 0;         // Reset overall page count
+                    lastPageContent = "";    // Clear previous page content
+                    bookOutputDiv.innerHTML = ""; // Clear existing book content
+
+                    // Display the generated storyboard in the UI
+                    storyboardOutputDiv.innerHTML = `<h3 class="font-bold text-lg mb-2 text-blue-200">${response.book_title || "Untitled Book"}</h3>`;
+                    currentStoryboard.forEach((item, index) => {
+                        const p = document.createElement("p");
+                        p.className = "storyboard-item";
+                        p.id = `chapter-${index}`; // Add ID for highlighting
+                        p.innerHTML = `<span>Chapter ${item.chapter_number}: ${item.chapter_title}</span><br>${item.summary_of_content}`;
+                        storyboardOutputDiv.appendChild(p);
+                    });
+                    updateStatus("Chapter storyboard generated successfully! Now, generate pages for Chapter 1.", "success");
+                    totalChapterInfoSpan.textContent = currentStoryboard.length;
+                    currentChapterInfoSpan.textContent = `Chapter ${currentChapterIndex + 1}`;
+                    currentPageInfoSpan.textContent = `Page ${currentPage}`;
+                    updateStoryboardHighlight(); // Highlight the first chapter
+                } else {
+                    updateStatus("Failed to generate a valid chapter storyboard. The AI response was empty or malformed. Please refine your input.", "error");
+                    // Reset state on failure
+                    currentStoryboard = [];
+                    currentChapterIndex = 0;
+                    totalPagesGoal = 0;
+                    storyboardOutputDiv.innerHTML = "No chapter storyboard generated. Please try again.";
+                }
+            } catch (error) {
+                updateStatus(`Error generating chapter storyboard: ${error.message}. Raw AI response: ${rawResponse.substring(0, 200)}...`, "error");
+                // Reset state on error
+                currentStoryboard = [];
+                currentChapterIndex = 0;
+                totalPagesGoal = 0;
+                storyboardOutputDiv.innerHTML = "Error generating chapter storyboard.";
+            } finally {
+                toggleButtons(false, false, false, isAutoGenerating); // Re-enable buttons after generation attempt
+            }
+        }
+
+        /**
+         * Generates the next page of the book based on the current chapter's summary and previous page content.
+         */
+        async function generateNextPage() {
+            // Check if all chapters are done or if no storyboard exists
+            if (currentChapterIndex >= currentStoryboard.length || currentStoryboard.length === 0) {
+                updateStatus("All chapters are complete or no storyboard available. Please generate a new storyboard.", "info");
+                toggleButtons(false, false, false, isAutoGenerating);
+                return;
+            }
+
+            currentPage++; // Increment overall page number
+            toggleButtons(false, false, true, isAutoGenerating); // Disable next page button during generation
+            updateStatus(`Generating page ${currentPage} for Chapter ${currentChapterIndex + 1}...`, "info");
+            currentPageInfoSpan.textContent = `Page ${currentPage}`;
+
+            // Retrieve current book details and current chapter's storyboard entry
+            const currentBookTitle = document.querySelector("#storyboard-output h3")?.textContent || "Your Book";
+            const storyIdea = storyIdeaInput.value.trim();
+            const genre = genreInput.value.trim();
+            const styleTips = styleTipsInput.value.trim();
+
+            const currentChapter = currentStoryboard[currentChapterIndex];
+            const nextChapter = currentStoryboard[currentChapterIndex + 1]; // Look ahead to the next chapter
+
+            // Create a temporary div to show streaming content for the current page
+            const pageElement = document.createElement("div");
+            pageElement.className = "book-page-section";
+            pageElement.innerHTML = `<h4 class="book-page-title">Page ${currentPage}</h4><p class="text-white">Generating...</p>`;
+            bookOutputDiv.appendChild(pageElement);
+            bookOutputDiv.scrollTop = bookOutputDiv.scrollHeight; // Scroll to view the new placeholder
+
+            // Construct the detailed prompt for page generation
+            const prompt = `You are an AI assistant tasked with writing a book, one page at a time.
+            **Book Title:** "${currentBookTitle}"
+            **Overall Story Idea:** "${storyIdea}"
+            **Genre:** "${genre}"
+            **Writing Style / Tone:** "${styleTips}"
+            **Current Overall Page Number:** ${currentPage}
+            **Desired Total Pages for the entire book:** ${totalPagesGoal}
+
+            **Current Chapter Context:**
+            Chapter ${currentChapter.chapter_number}: "${currentChapter.chapter_title}"
+            Summary: "${currentChapter.summary_of_content}"
+
+            ${nextChapter ? `**Upcoming Chapter (for pacing awareness):**\nChapter ${nextChapter.chapter_number}: "${nextChapter.chapter_title}"\nSummary: "${nextChapter.summary_of_content}"\n` : ''}
+
+            ${lastPageContent ? `**The PREVIOUS Page (${currentPage - 1}) ended with the following content:**\n---\n${lastPageContent}\n---\n` : ''}
+
+            Please write the full content for **one single page** (page ${currentPage}) that progresses the story within the context of **Chapter ${currentChapter.chapter_number}**. Ensure it flows seamlessly from the previous page's ending (if provided) and moves towards fulfilling the current chapter's summary. Maintain the specified writing style and genre. Your response should ONLY be the raw text content of the page. Do NOT include page numbers, chapter headings, section titles, or any meta-information. Just provide the story text for this single page. Make sure the content is substantial enough for a typical book page.`;
+
+            try {
+                // Call WebLLM with a stream callback to update the page content in real-time
+                const pageContent = await callWebLLM(prompt, (currentStream) => {
+                    pageElement.querySelector('p').textContent = currentStream;
+                    bookOutputDiv.scrollTop = bookOutputDiv.scrollHeight; // Keep scrolling as content arrives
+                });
+                lastPageContent = pageContent; // Store for the next page's context
+
+                // Update status after page generation
+                if (currentChapterIndex === currentStoryboard.length - 1 && currentPage >= totalPagesGoal) {
+                     updateStatus("Book generation complete! All chapters and desired pages are covered.", "success");
+                } else if (currentChapterIndex === currentStoryboard.length - 1) {
+                    updateStatus(`Page ${currentPage} generated for the FINAL chapter. Keep generating pages or finish the book.`, "success");
+                } else {
+                    updateStatus(`Page ${currentPage} generated for Chapter ${currentChapterIndex + 1}. You can generate more pages for this chapter or click 'Next Chapter'.`, "success");
+                }
+            } catch (error) {
+                updateStatus(`Error generating page ${currentPage}: ${error.message}`, "error");
+                pageElement.querySelector('p').textContent = `Error generating this page: ${error.message}`;
+                lastPageContent = ""; // Clear last page content on error to prevent cascading issues
+                // If there's an error during auto-generation, stop it
+                if (isAutoGenerating) {
+                    stopAutoGenerate();
+                }
+            } finally {
+                // Buttons are handled by the autoGenerateBook loop or individual clicks
+                if (!isAutoGenerating) {
+                    toggleButtons(false, false, false, isAutoGenerating);
+                }
+            }
+        }
+
+        /**
+         * Advances the book to the next chapter in the storyboard.
+         */
+        function advanceChapter() {
+            if (currentChapterIndex < currentStoryboard.length - 1) {
+                currentChapterIndex++;
+                lastPageContent = ""; // Reset last page content to start the new chapter fresh
+                updateStatus(`Advanced to Chapter ${currentChapterIndex + 1}: ${currentStoryboard[currentChapterIndex].chapter_title}. Now generate pages for this chapter.`, "info");
+                currentChapterInfoSpan.textContent = `Chapter ${currentChapterIndex + 1}`;
+                updateStoryboardHighlight(); // Highlight the new current chapter
+            } else {
+                updateStatus("You are already on the last chapter. No more chapters to advance to.", "info");
+            }
+            toggleButtons(false, false, false, isAutoGenerating); // Re-enable buttons after advancing chapter
+        }
+
+        /**
+         * Asks the AI if the current chapter's goal has been met.
+         * @returns {Promise<boolean>} True if AI indicates chapter is complete, false otherwise.
+         */
+        async function askAIChapterComplete() {
+            if (currentChapterIndex >= currentStoryboard.length) {
+                return true; // No more chapters
+            }
+
+            const currentChapter = currentStoryboard[currentChapterIndex];
+            const prompt = `Given the following chapter summary and the content of the last page written for it:
+            ---
+            Chapter Summary: "${currentChapter.summary_of_content}"
+            Last Page Content: "${lastPageContent.substring(0, 500)}" (truncated for brevity)
+            ---
+            Based on the chapter summary, has enough content for Chapter ${currentChapter.chapter_number} been generated? Is it a good point to logically conclude this chapter and move to the next?
+            Respond ONLY with "YES" if it's complete enough, or "NO" if more content is needed. Provide a brief (1-2 sentence) explanation AFTER your YES/NO.`;
+
+            try {
+                // Call WebLLM for a decision, without streaming updates to UI
+                const response = await callWebLLM(prompt);
+                const decision = response.trim().toUpperCase();
+                console.log(`AI Chapter Complete Decision: ${decision}`);
+                return decision.startsWith("YES");
+            } catch (error) {
+                console.error("Error asking AI about chapter completion:", error);
+                // Default to false on error to continue generating pages
+                return false;
+            }
+        }
+
+
+        /**
+         * Automatically generates the entire book.
+         */
+        async function autoGenerateBook() {
+            if (currentStoryboard.length === 0) {
+                updateStatus("Please generate a storyboard first before auto-generating.", "error");
+                return;
+            }
+
+            isAutoGenerating = true;
+            toggleButtons(false, false, false, true); // Update button states for auto-generation
+
+            try {
+                // Continue generating as long as auto-generate is active and conditions are met
+                while (isAutoGenerating && (currentPage < totalPagesGoal || currentChapterIndex < currentStoryboard.length)) {
+                    // Generate a page
+                    await generateNextPage();
+
+                    // Introduce a small delay for readability and to prevent overwhelming the UI
+                    await new Promise(resolve => setTimeout(resolve, 2000)); // 2-second delay between pages
+
+                    // If we've hit the total page goal and are on the last chapter, or if we've passed the total pages, break
+                    if (currentPage >= totalPagesGoal && currentChapterIndex >= currentStoryboard.length -1) {
+                         updateStatus("Auto-generation complete: Desired total pages reached and final chapter covered.", "success");
+                         break; // Exit loop
+                    }
+
+                    // If not on the last chapter, ask AI if current chapter is complete
+                    if (currentChapterIndex < currentStoryboard.length - 1) {
+                        const chapterComplete = await askAIChapterComplete();
+                        if (chapterComplete) {
+                            advanceChapter(); // Automatically advance to the next chapter
+                            await new Promise(resolve => setTimeout(resolve, 1000)); // Small delay after chapter advance
+                        }
+                    } else if (currentChapterIndex === currentStoryboard.length - 1 && currentPage >= totalPagesGoal) {
+                         // This ensures it stops if it's the last chapter and met the page goal implicitly
+                         break;
+                    }
+                }
+                updateStatus("Auto-generation finished.", "success");
+            } catch (error) {
+                updateStatus(`Auto-generation interrupted due to error: ${error.message}`, "error");
+            } finally {
+                isAutoGenerating = false; // Ensure flag is reset
+                toggleButtons(false, false, false, false); // Reset buttons to normal state
+            }
+        }
+
+        /**
+         * Stops the automatic book generation process.
+         */
+        function stopAutoGenerate() {
+            isAutoGenerating = false;
+            updateStatus("Auto-generation stopped.", "info");
+            toggleButtons(false, false, false, false); // Reset buttons to normal state
+        }
+
+        // Initialize WebLLM when the page loads
+        initWebLLM();
+    </script>
+</body>
+</html>
